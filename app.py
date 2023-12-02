@@ -1,19 +1,31 @@
 import asyncio
-
-from loader import bot, storage
-
-
-async def on_startup(dp):
-    pass
-
-
-async def on_shutdown(dp):
-    await bot.close()
-    await storage.close()
+import logging
+from aiogram import Bot, Dispatcher
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.enums import ParseMode
+import config
+from handlers.start import start_router
+from handlers.main_menu import menu_router
 
 
-if __name__ == '__main__':
-    from aiogram import executor
-    from handlers import dp
+logging.basicConfig(format=u'%(filename)s [LINE:%(lineno)d] #%(levelname)-8s [%(asctime)s]  %(message)s',
+                    level=logging.INFO,
+                    )
 
-    executor.start_polling(dp, on_startup=on_startup, on_shutdown=on_shutdown)
+storage = MemoryStorage()
+# storage = RedisStorage2()
+dp = Dispatcher(storage=storage)
+
+
+async def main() -> None:
+    # Initialize Bot instance with a default parse mode which will be passed to all API calls
+    bot = Bot(config.BOT_TOKEN, parse_mode=ParseMode.HTML)
+    # And the run events dispatching
+    dp.include_router(start_router)
+    dp.include_router(menu_router)
+    await dp.start_polling(bot)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    asyncio.run(main())

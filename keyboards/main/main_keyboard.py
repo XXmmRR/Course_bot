@@ -11,3 +11,10 @@ def get_main_menu_keyboard():
                                          input_field_placeholder="Главное меню")
     return keyboard
 
+
+def get_keyboard_by_list(keyboard_list):
+    builder = ReplyKeyboardBuilder()
+    [builder.add(types.KeyboardButton(text=x)) for x in keyboard_list]
+    builder.adjust(2)
+    keyboard = types.ReplyKeyboardMarkup(keyboard=builder.export(), resize_keyboard=True,)
+    return keyboard

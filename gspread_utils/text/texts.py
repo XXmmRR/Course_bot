@@ -12,9 +12,9 @@ def get_text(sheet=sheet, col_id=3):
 
     for row in sheet.get_all_values():
         # Проверяем, является ли строка началом нового вопроса
-        if row[3] != '' and row[3] != '-' or row[0].isdigit():
+        if row[col_id] != '' and row[col_id] != '-' or row[0].isdigit():
             if row[0] == 'Вопрос ':
-                texts.append(row[3])
+                texts.append(row[col_id])
             elif row[0].startswith('Ответ') and texts:
                 temp_keyboard.append(row[col_id])
 

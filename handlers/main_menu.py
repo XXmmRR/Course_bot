@@ -54,7 +54,7 @@ async def handle_message_second(message: types.Message, state: FSMContext):
     current_index = user_data.get('current_index', 0)  # Получаем текущий индекс, начинаем с 0
 
     texts, keyboards, actions = get_text(col_id=9)  # Получаем данные
-    print(texts)
+
     # Нормализуем текст сообщения, удаляем пробелы и приводим к нижнему регистру
     normalized_message_text = message.text.strip().lower()
 

@@ -29,8 +29,17 @@ def get_text(sheet=sheet, col_id=3):
                 temp_actions.clear()
                 temp_keyboard.clear()
                 current_index += 1
-
     return texts, keyboards, actions
 
 
-print(get_text())
+def get_states_count(sheet=sheet, col_id=3):
+    actions = []        # Список для наборов действий, соответствующих каждому набору клавиатур
+
+    for row in sheet.get_all_values():
+        if row[0].startswith('Следствие выбора'):
+            actions.append(row[col_id])
+
+    return actions.count('Свободный ввод текста и сдедующий вопрос')
+
+
+print(get_states_count(col_id=9))

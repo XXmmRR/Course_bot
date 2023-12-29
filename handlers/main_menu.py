@@ -7,13 +7,15 @@ from gspread_utils.buttons.get_main_buttons import get_main_keyboard_fields
 from gspread_utils.text.texts import get_text
 from states.menu_routing_states import FollowHandlers
 from aiogram.fsm.context import FSMContext
+from gspread_utils.constants import ABOUT_COMPANY_ID, FEED_BACK_ID, PARTNER_ID
+from states.menu_states import FeedBackDynamicStates, PartnerDynamicStates
 
 menu_router = Router(name='menu router')
 
 fiedls = get_main_keyboard_fields()
-company_texts = get_text(col_id=5)
-contact_texts = get_text(col_id=7)
-work_texts = get_text(col_id=9)
+company_texts = get_text(col_id=ABOUT_COMPANY_ID)
+contact_texts = get_text(col_id=FEED_BACK_ID)
+work_texts = get_text(col_id=PARTNER_ID)
 
 
 @menu_router.message(Textfilter('Читать текст 📖'))
@@ -29,21 +31,21 @@ async def watch_video(message: types.Message):
 
 @menu_router.message(Textfilter(fiedls[0]))
 async def about_company_main(message: types.Message, state: FSMContext):
-    await message.answer(company_texts[0][0], reply_markup=get_keyboard_by_list(keyboard_list=company_texts[1][0]))
     await state.clear()
+    await split_and_send_message(company_texts[0][0], reply_markup=get_keyboard_by_list(keyboard_list=company_texts[1][0]))
     await state.set_state(FollowHandlers.first_handler)
 
 
 @menu_router.message(Textfilter(fiedls[1]))
 async def contacts_main(message: types.Message, state: FSMContext):
-    await message.answer(contact_texts[0][0], reply_markup=get_keyboard_by_list(keyboard_list=contact_texts[1][0]))
     await state.clear()
+    await split_and_send_message(contact_texts[0][0], reply_markup=get_keyboard_by_list(keyboard_list=contact_texts[1][0]))
     await state.set_state(FollowHandlers.second_handler)
 
 
 @menu_router.message(Textfilter(fiedls[2]))
 async def work_main(message: types.Message, state: FSMContext):
-    await message.answer(work_texts[0][0], reply_markup=get_keyboard_by_list(work_texts[1][0]))
+    await split_and_send_message(work_texts[0][0], reply_markup=get_keyboard_by_list(keyboard_list=work_texts[1][0]))
     await state.clear()
     await state.set_state(FollowHandlers.third_handler)
 
@@ -52,8 +54,9 @@ async def work_main(message: types.Message, state: FSMContext):
 async def handle_message_second(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     current_index = user_data.get('current_index', 0)  # Получаем текущий индекс, начинаем с 0
-
-    texts, keyboards, actions = get_text(col_id=9)  # Получаем данные
+    current_state_index = user_data.get('state_index', 1)
+    print('Да я тууут')
+    texts, keyboards, actions = get_text(col_id=PARTNER_ID)  # Получаем данные
 
     # Нормализуем текст сообщения, удаляем пробелы и приводим к нижнему регистру
     normalized_message_text = message.text.strip().lower()
@@ -68,13 +71,19 @@ async def handle_message_second(message: types.Message, state: FSMContext):
         # Получаем соответствующее действие
         action = actions[current_index][choice_index]
 
-        if action == 'Следующий вопрос' or 'Свободный ввод текста и сдедующий вопрос':
+        if action == 'Следующий вопрос':
             # Убедитесь, что индекс не выходит за рамки списка
             if current_index + 1 < len(texts):
                 current_index += 1  # Переходим к следующему вопросу
             else:
                 # Здесь может быть ваша логика для завершения диалога или цикла вопросов
                 await message.answer("Вы достигли конца диалога.")
+        elif action == 'Свободный ввод текста и сдедующий вопрос':
+            current_index += 1
+            await message.answer('Введите текст', reply_markup=types.ReplyKeyboardRemove())
+            await state.set_state(FollowHandlers.third_handler)
+            await state.update_data(current_index=current_index)
+            return
         elif action == 'В меню':
             await read_text(message)
             await state.clear()
@@ -85,9 +94,10 @@ async def handle_message_second(message: types.Message, state: FSMContext):
 
         # Отправляем следующий текст
         if current_index <= len(texts):
-            await message.answer(texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            await split_and_send_message(texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
     else:
-        await message.answer("Пожалуйста, выберите один из предложенных вариантов ответов.")
+        if current_index <= len(texts):
+            await split_and_send_message(texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
 
 
 @menu_router.message(FollowHandlers.second_handler)
@@ -95,8 +105,8 @@ async def handle_message_second(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     current_index = user_data.get('current_index', 0)  # Получаем текущий индекс, начинаем с 0
 
-    texts, keyboards, actions = get_text(col_id=7)  # Получаем данные
-    print(texts)
+    texts, keyboards, actions = get_text(col_id=FEED_BACK_ID)  # Получаем данные
+    print('я тут')
     # Нормализуем текст сообщения, удаляем пробелы и приводим к нижнему регистру
     normalized_message_text = message.text.strip().lower()
 
@@ -109,18 +119,23 @@ async def handle_message_second(message: types.Message, state: FSMContext):
         choice_index = normalized_keyboard_options.index(normalized_message_text)
         # Получаем соответствующее действие
         action = actions[current_index][choice_index]
-
+        print(action)
         if action == 'Следующий вопрос':
             # Убедитесь, что индекс не выходит за рамки списка
             if current_index + 1 < len(texts):
                 current_index += 1  # Переходим к следующему вопросу
-            else:
-                # Здесь может быть ваша логика для завершения диалога или цикла вопросов
-                await message.answer("Вы достигли конца диалога.")
+        elif action == 'Свободный ввод текста и сдедующий вопрос':
+            await message.answer('Введите текст', reply_markup=types.ReplyKeyboardRemove())
+            await state.set_state(FollowHandlers.second_handler)
+            return
         elif action == 'В меню':
             await read_text(message)
             await state.clear()
             return
+        else:
+            # Здесь может быть ваша логика для завершения диалога или цикла вопросов
+            await message.answer("Вы достигли конца диалога.")
+
 
         # Сохраняем обновлённый индекс текущего вопроса в состоянии
         await state.update_data(current_index=current_index)
@@ -128,9 +143,7 @@ async def handle_message_second(message: types.Message, state: FSMContext):
         # Отправляем следующий текст
         if current_index <= len(texts):
             print(current_index)
-            await message.answer(texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
-    else:
-        await message.answer("Пожалуйста, выберите один из предложенных вариантов ответов.")
+            await split_and_send_message(texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
 
 
 @menu_router.message(FollowHandlers.first_handler)
@@ -138,40 +151,36 @@ async def handle_message(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     current_index = user_data.get('current_index', 0)  # Получаем текущий индекс, начинаем с 0
 
-    texts, keyboards, actions = get_text(col_id=5)  # Получаем данные
+    texts, keyboards, actions = get_text(col_id=ABOUT_COMPANY_ID)  # Получаем данные
 
-    # Нормализуем текст сообщения, удаляем пробелы и приводим к нижнему регистру
     normalized_message_text = message.text.strip().lower()
-
-    # Нормализуем варианты клавиатуры, тоже удаляем пробелы и приводим к нижнему регистру
     normalized_keyboard_options = [option.strip().lower() for option in keyboards[current_index]]
 
-    # Проверяем, совпадает ли нормализованный текст сообщения с одной из нормализованных опций клавиатуры
     if normalized_message_text in normalized_keyboard_options:
-        # Получаем индекс выбранной опции ответа
         choice_index = normalized_keyboard_options.index(normalized_message_text)
-        # Получаем соответствующее действие
         action = actions[current_index][choice_index]
 
         if action == 'Следующий вопрос':
-            # Убедитесь, что индекс не выходит за рамки списка
             if current_index + 1 < len(texts):
-                current_index += 1  # Переходим к следующему вопросу
+                current_index += 1
             else:
-                # Здесь может быть ваша логика для завершения диалога или цикла вопросов
-                await read_text(message)
+                await split_and_send_message(message, texts[current_index])
                 await state.clear()
                 return
         elif action == 'В меню':
-            await read_text(message)
+            await split_and_send_message(message, texts[current_index])
             await state.clear()
             return
 
-        # Сохраняем обновлённый индекс текущего вопроса в состоянии
         await state.update_data(current_index=current_index)
 
-        # Отправляем следующий текст
         if current_index < len(texts):
-            await message.answer(texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            await split_and_send_message(message, texts[current_index], get_keyboard_by_list(keyboards[current_index]))
     else:
         await message.answer("Пожалуйста, выберите один из предложенных вариантов ответов.")
+
+
+async def split_and_send_message(message, text, reply_markup=None):
+    # Разделяем текст по символу переноса строки и отправляем каждую часть отдельным сообщением
+    for part in text.split('\n'):
+        await message.answer(part, reply_markup=reply_markup)

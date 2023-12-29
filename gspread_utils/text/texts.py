@@ -41,5 +41,3 @@ def get_states_count(sheet=sheet, col_id=3):
 
     return actions.count('Свободный ввод текста и сдедующий вопрос')
 
-
-print(get_states_count(col_id=9))

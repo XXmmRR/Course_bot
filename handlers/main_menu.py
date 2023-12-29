@@ -3,7 +3,7 @@ from aiogram.filters import CommandStart
 from aiogram import Router
 from keyboards.main.main_keyboard import get_main_menu_keyboard, get_keyboard_by_list
 from filters.text_filter import Textfilter
-from gspread_utils.buttons.get_main_buttons import get_main_keyboard_fields
+from gspread_utils.buttons.get_main_buttons import get_main_keyboard_fields, get_work_buttons
 from gspread_utils.text.texts import get_text
 from states.menu_routing_states import FollowHandlers
 from aiogram.fsm.context import FSMContext
@@ -32,22 +32,28 @@ async def watch_video(message: types.Message):
 @menu_router.message(Textfilter(fiedls[0]))
 async def about_company_main(message: types.Message, state: FSMContext):
     await state.clear()
-    await split_and_send_message(company_texts[0][0], reply_markup=get_keyboard_by_list(keyboard_list=company_texts[1][0]))
+    await split_and_send_message(message, company_texts[0][0], reply_markup=get_keyboard_by_list(keyboard_list=company_texts[1][0]))
     await state.set_state(FollowHandlers.first_handler)
 
 
 @menu_router.message(Textfilter(fiedls[1]))
 async def contacts_main(message: types.Message, state: FSMContext):
     await state.clear()
-    await split_and_send_message(contact_texts[0][0], reply_markup=get_keyboard_by_list(keyboard_list=contact_texts[1][0]))
+    await split_and_send_message(message, contact_texts[0][0], reply_markup=get_keyboard_by_list(keyboard_list=contact_texts[1][0]))
     await state.set_state(FollowHandlers.second_handler)
 
 
 @menu_router.message(Textfilter(fiedls[2]))
 async def work_main(message: types.Message, state: FSMContext):
-    await split_and_send_message(work_texts[0][0], reply_markup=get_keyboard_by_list(keyboard_list=work_texts[1][0]))
+    await split_and_send_message(message, work_texts[0][0], reply_markup=get_keyboard_by_list(keyboard_list=work_texts[1][0]))
     await state.clear()
     await state.set_state(FollowHandlers.third_handler)
+
+
+@menu_router.message(Textfilter(fiedls[3]))
+async def work(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer('Кем ты хочешь стать 🚀', reply_markup=get_keyboard_by_list(get_work_buttons('Трудоустройство 🚀')))
 
 
 @menu_router.message(FollowHandlers.third_handler)
@@ -94,10 +100,10 @@ async def handle_message_second(message: types.Message, state: FSMContext):
 
         # Отправляем следующий текст
         if current_index <= len(texts):
-            await split_and_send_message(texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
     else:
         if current_index <= len(texts):
-            await split_and_send_message(texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
 
 
 @menu_router.message(FollowHandlers.second_handler)
@@ -143,7 +149,7 @@ async def handle_message_second(message: types.Message, state: FSMContext):
         # Отправляем следующий текст
         if current_index <= len(texts):
             print(current_index)
-            await split_and_send_message(texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
 
 
 @menu_router.message(FollowHandlers.first_handler)
@@ -182,5 +188,6 @@ async def handle_message(message: types.Message, state: FSMContext):
 
 async def split_and_send_message(message, text, reply_markup=None):
     # Разделяем текст по символу переноса строки и отправляем каждую часть отдельным сообщением
-    for part in text.split('\n'):
-        await message.answer(part, reply_markup=reply_markup)
+    for part in text.split(r'\n'):
+        if part !='\n':
+            await message.answer(part, reply_markup=reply_markup)

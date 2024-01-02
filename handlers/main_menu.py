@@ -132,59 +132,11 @@ async def handle_message(message: types.Message, state: FSMContext):
             await read_text(message, state)
             await state.clear()
             return
-        elif action.startswith('Переход на ветку ='):
-            first_message = action.split('=')[-1]
-            user_data = await state.get_data()
-            if not user_data.get('first_message'):
-                await state.set_data({'first_message': first_message})
-            user_data = await state.get_data()
-            current_index = user_data.get('current_index', 0)  # Получаем текущий индекс, начинаем с 0
-            first_message = user_data.get('first_message')
-            col_id = get_column_by_menu_second_row(search_text=first_message)
-            texts, keyboards, actions = get_text(col_id=col_id)  # Получаем данные
-            # Нормализуем текст сообщения, удаляем пробелы и приводим к нижнему регистру
-            normalized_message_text = message.text.strip().lower()
-
-            # Нормализуем варианты клавиатуры, тоже удаляем пробелы и приводим к нижнему регистру
-            normalized_keyboard_options = [option.strip().lower() for option in keyboards[current_index]]
-
-            # Проверяем, совпадает ли нормализованный текст сообщения с одной из нормализованных опций клавиатуры
-            if normalized_message_text in normalized_keyboard_options:
-                # Получаем индекс выбранной опции ответа
-                choice_index = normalized_keyboard_options.index(normalized_message_text)
-                # Получаем соответствующее действие
-                action = actions[current_index][choice_index]
-
-                if action == 'Следующий вопрос':
-                    # Убедитесь, что индекс не выходит за рамки списка
-                    if current_index + 1 < len(texts):
-                        current_index += 1  # Переходим к следующему вопросу
-                    else:
-                        # Здесь может быть ваша логика для завершения диалога или цикла вопросов
-                        await message.answer("Вы достигли конца диалога.")
-                elif action == 'Свободный ввод текста и сдедующий вопрос':
-                    current_index += 1
-                    await message.answer('Введите текст', reply_markup=types.ReplyKeyboardRemove())
-                    await state.set_state(FollowHandlers.third_handler)
-                    await state.update_data(current_index=current_index)
-                    return
-                elif action == 'В меню':
-                    await read_text(message, state)
-                    await state.clear()
-                    return
-
-                # Сохраняем обновлённый индекс текущего вопроса в состоянии
-                await state.update_data(current_index=current_index)
-
-                # Отправляем следующий текст
-                if current_index <= len(texts):
-                    await split_and_send_message(message, texts[current_index],
-                                                 reply_markup=get_keyboard_by_list(keyboards[current_index]))
-            else:
-                if current_index <= len(texts):
-                    await split_and_send_message(message, texts[current_index],
-                                                 reply_markup=get_keyboard_by_list(keyboards[current_index]))
-
+        elif action.startswith(' Переход на ветку ='):
+            splited_action = action.split('=')[-1].strip()
+            await state.set_data({'first_message': splited_action})
+            await handle_message(message, state)
+            return
         # Сохраняем обновлённый индекс текущего вопроса в состоянии
         await state.update_data(current_index=current_index)
 

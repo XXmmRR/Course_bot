@@ -125,7 +125,7 @@ async def handle_message(message: types.Message, state: FSMContext):
         elif action == 'Свободный ввод текста и сдедующий вопрос':
             current_index += 1
             await message.answer('Введите текст', reply_markup=types.ReplyKeyboardRemove())
-            await state.set_state(FollowHandlers.third_handler)
+            await state.set_state(FollowHandlers.first_handler)
             await state.update_data(current_index=current_index)
             return
         elif action == 'В меню':

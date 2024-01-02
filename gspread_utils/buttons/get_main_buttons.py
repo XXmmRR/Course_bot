@@ -55,5 +55,26 @@ def get_column_id_by_text(search_text, worksheet=sheet):
     return None
 
 
+def get_column_by_menu_second_row(search_text, worksheet=sheet):
+    """
+    Поиск заданного текста в третьей строке и возвращение номера колонки.
+
+    :param search_text: Текст для поиска в третьей строке.
+    :param worksheet: Объект Worksheet для взаимодействия с таблицами в gspread.
+    :return: Номер колонки, где был найден текст.
+    """
+
+    # Получение данных третьей строки
+    third_row_values = worksheet.row_values(2)
+
+    # Поиск текста и возвращение номера колонки
+    for i, value in enumerate(third_row_values):
+        if search_text in value:
+            # Возвращение номера колонки (индексация начинается с 1)
+            return i
+    return None
+
+
+
 id = (get_column_id_by_text('Общее'))
 print(get_text(col_id=id-1))

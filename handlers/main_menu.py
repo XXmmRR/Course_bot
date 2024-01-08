@@ -10,6 +10,7 @@ from states.menu_routing_states import FollowHandlers
 from aiogram.fsm.context import FSMContext
 from gspread_utils.constants import ABOUT_COMPANY_ID, FEED_BACK_ID, PARTNER_ID
 from states.menu_states import FeedBackDynamicStates, PartnerDynamicStates
+from aiogram.types import PhotoSize, InputMediaPhoto
 
 menu_router = Router(name='menu router')
 
@@ -23,6 +24,7 @@ work_texts = get_text(col_id=PARTNER_ID)
 async def read_text(message: types.Message, state: FSMContext):
     keyboard = get_main_menu_keyboard()
     await message.answer('Что тебя интересует сейчас? 🤔', reply_markup=keyboard)
+    await state.clear()
     await state.set_state(FollowHandlers.first_handler)
 
 
@@ -47,7 +49,8 @@ async def works_questions(message: types.Message, state: FSMContext):
     current_index = user_data.get('current_index', 0)  # Получаем текущий индекс, начинаем с 0
     first_message = user_data.get('first_message')
     col_id = get_column_id_by_text(search_text=first_message)
-    texts, keyboards, actions = get_text(col_id=col_id)  # Получаем данные
+    texts, keyboards, actions, pictures = get_text(col_id=col_id)
+    print(pictures)
     # Нормализуем текст сообщения, удаляем пробелы и приводим к нижнему регистру
     normalized_message_text = message.text.strip().lower()
 
@@ -71,12 +74,12 @@ async def works_questions(message: types.Message, state: FSMContext):
         elif action == 'Свободный ввод текста и сдедующий вопрос':
             current_index += 1
             await message.answer('Введите текст', reply_markup=types.ReplyKeyboardRemove())
-            await state.set_state(FollowHandlers.third_handler)
+            await state.set_state(FollowHandlers.work_handler)
             await state.update_data(current_index=current_index)
             return
         elif action == 'В меню':
-            await read_text(message)
             await state.clear()
+            await read_text(message, state)
             return
 
         # Сохраняем обновлённый индекс текущего вопроса в состоянии
@@ -84,10 +87,18 @@ async def works_questions(message: types.Message, state: FSMContext):
 
         # Отправляем следующий текст
         if current_index <= len(texts):
-            await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            try:
+                pic = pictures[current_index]
+                await split_and_send_message(message, texts[current_index], pic=pic, reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            except:
+                await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
     else:
         if current_index <= len(texts):
-            await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            try:
+                pic = pictures[current_index]
+                await split_and_send_message(message, texts[current_index], pic=pic, reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            except:
+                await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
 
 
 @menu_router.message(FollowHandlers.first_handler)
@@ -101,7 +112,8 @@ async def handle_message(message: types.Message, state: FSMContext):
     if first_message == 'Трудоустройство 🚀':
         await work(message, state)
     col_id = get_column_by_menu_second_row(search_text=first_message)
-    texts, keyboards, actions = get_text(col_id=col_id)  # Получаем данные
+    texts, keyboards, actions, pictures = get_text(col_id=col_id)  # Получаем данные
+    print(pictures)
     # Нормализуем текст сообщения, удаляем пробелы и приводим к нижнему регистру
     normalized_message_text = message.text.strip().lower()
 
@@ -129,11 +141,14 @@ async def handle_message(message: types.Message, state: FSMContext):
             await state.update_data(current_index=current_index)
             return
         elif action == 'В меню':
-            await read_text(message, state)
             await state.clear()
+            await read_text(message, state)
             return
         elif action.startswith(' Переход на ветку ='):
             splited_action = action.split('=')[-1].strip()
+            if splited_action == 'Трудоустройство 🚀':
+                await work(message, state)
+                return
             await state.set_data({'first_message': splited_action})
             await handle_message(message, state)
             return
@@ -142,14 +157,32 @@ async def handle_message(message: types.Message, state: FSMContext):
 
         # Отправляем следующий текст
         if current_index <= len(texts):
-            await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            try:
+                pic = pictures[current_index]
+                await split_and_send_message(message, texts[current_index], pic=pic, reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            except:
+                await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
     else:
         if current_index <= len(texts):
-            await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            try:
+                pic = pictures[current_index]
+                await split_and_send_message(message, texts[current_index], pic=pic, reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            except:
+                await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
 
 
-async def split_and_send_message(message, text, reply_markup=None):
-    # Разделяем текст по символу переноса строки и отправляем каждую часть отдельным сообщением
-    for part in text.split(r'\n'):
-        if part !='\n':
-            await message.answer(part, reply_markup=reply_markup)
+async def split_and_send_message(message, text, pic=None, reply_markup=None):
+    # Разделяем текст по символу переноса строки
+    parts = text.split(r'\n')
+
+    # Проверяем, есть ли картинка для отправки
+    if pic:
+        # Если есть картинка, отправляем первую часть сообщения с картинкой
+        if parts[0] != '\n':
+            await message.answer_photo(photo=pic, caption=parts[0], reply_markup=reply_markup, parse_mode='HTML')
+        # Удаляем первую часть, так как она уже отправлена
+        parts = parts[1:]
+    # Далее отправляем оставшиеся части сообщения
+    for part in parts:
+        if part != '\n':
+            await message.answer(part, reply_markup=reply_markup, parse_mode='HTML')

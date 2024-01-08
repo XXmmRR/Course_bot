@@ -5,6 +5,7 @@ def get_text(sheet=sheet, col_id=3):
     texts = []          # Список для текстов вопросов
     keyboards = []      # Список для наборов клавиатур (ответов)
     actions = []        # Список для наборов действий, соответствующих каждому набору клавиатур
+    pictures = []
 
     temp_keyboard = []  # Временный список для сбора ответов текущего вопроса
     temp_actions = []   # Временный список для сбора действий текущего вопроса
@@ -15,6 +16,8 @@ def get_text(sheet=sheet, col_id=3):
         if row[col_id] != '' and row[col_id] != '-' or row[0].isdigit():
             if row[0] == 'Вопрос ':
                 texts.append(row[col_id])
+            if row[0] == 'Картинка':
+                pictures.append(row[col_id])
             elif row[0].startswith('Ответ') and texts:
                 temp_keyboard.append(row[col_id])
 
@@ -29,7 +32,7 @@ def get_text(sheet=sheet, col_id=3):
                 temp_actions.clear()
                 temp_keyboard.clear()
                 current_index += 1
-    return texts, keyboards, actions
+    return texts, keyboards, actions, pictures
 
 
 def get_states_count(sheet=sheet, col_id=3):

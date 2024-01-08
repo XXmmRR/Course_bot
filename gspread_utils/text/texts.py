@@ -2,6 +2,7 @@ from gspread_utils.google_client import sheet
 
 
 def get_text(sheet=sheet, col_id=3):
+    videos = []          # Список для текстов вопросов
     texts = []          # Список для текстов вопросов
     keyboards = []      # Список для наборов клавиатур (ответов)
     actions = []        # Список для наборов действий, соответствующих каждому набору клавиатур
@@ -16,6 +17,8 @@ def get_text(sheet=sheet, col_id=3):
         if row[col_id] != '' and row[col_id] != '-' or row[0].isdigit():
             if row[0] == 'Вопрос ':
                 texts.append(row[col_id])
+            if row[0] == 'Видео':
+                videos.append(row[col_id])
             if row[0] == 'Картинка':
                 pictures.append(row[col_id])
             elif row[0].startswith('Ответ') and texts:
@@ -32,7 +35,7 @@ def get_text(sheet=sheet, col_id=3):
                 temp_actions.clear()
                 temp_keyboard.clear()
                 current_index += 1
-    return texts, keyboards, actions, pictures
+    return texts, keyboards, actions, pictures, videos
 
 
 def get_states_count(sheet=sheet, col_id=3):

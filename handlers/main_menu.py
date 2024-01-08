@@ -24,18 +24,22 @@ work_texts = get_text(col_id=PARTNER_ID)
 async def read_text(message: types.Message, state: FSMContext):
     keyboard = get_main_menu_keyboard()
     await message.answer('Что тебя интересует сейчас? 🤔', reply_markup=keyboard)
-    await state.clear()
+    await state.update_data({'video_mode': 0})
     await state.set_state(FollowHandlers.first_handler)
 
 
 @menu_router.message(Textfilter('Смотреть видео👀'))
-async def watch_video(message: types.Message):
-    await message.answer('Not implemented')
+async def watch_video(message: types.Message, state: FSMContext):
+    keyboard = get_main_menu_keyboard()
+    await message.answer('Что тебя интересует сейчас? 🤔', reply_markup=keyboard)
+    await state.update_data({'video_mode': 1})
+    await state.set_state(FollowHandlers.first_handler)
 
 
 @menu_router.message(Textfilter(fiedls[3]))
 async def work(message: types.Message, state: FSMContext):
     await state.clear()
+
     await message.answer('Кем ты хочешь стать 🚀', reply_markup=get_keyboard_by_list(get_work_buttons('Трудоустройство 🚀')))
     await state.set_state(FollowHandlers.work_handler)
 
@@ -43,13 +47,21 @@ async def work(message: types.Message, state: FSMContext):
 @menu_router.message(FollowHandlers.work_handler)
 async def works_questions(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
+    video_mod = user_data.get('video_mode')
     if not user_data.get('first_message'):
-        await state.set_data({'first_message': message.text})
+        await state.set_data(
+            {
+                'first_message': message.text,
+                'video_mode': video_mod
+             }
+        )
     user_data = await state.get_data()
     current_index = user_data.get('current_index', 0)  # Получаем текущий индекс, начинаем с 0
     first_message = user_data.get('first_message')
     col_id = get_column_id_by_text(search_text=first_message)
-    texts, keyboards, actions, pictures = get_text(col_id=col_id)
+    is_video_mode = user_data.get('video_mode')
+    print(is_video_mode)
+    texts, keyboards, actions, pictures, videos = get_text(col_id=col_id)
     print(pictures)
     # Нормализуем текст сообщения, удаляем пробелы и приводим к нижнему регистру
     normalized_message_text = message.text.strip().lower()
@@ -87,33 +99,51 @@ async def works_questions(message: types.Message, state: FSMContext):
 
         # Отправляем следующий текст
         if current_index <= len(texts):
-            try:
-                pic = pictures[current_index]
-                await split_and_send_message(message, texts[current_index], pic=pic, reply_markup=get_keyboard_by_list(keyboards[current_index]))
-            except:
-                await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            if not is_video_mode:
+                try:
+                    pic = pictures[current_index]
+                    await split_and_send_message(message, texts[current_index], pic=pic,
+                                                 reply_markup=get_keyboard_by_list(keyboards[current_index]))
+                except:
+                    await split_and_send_message(message, texts[current_index],
+                                                 reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            else:
+                await message.answer_video_note(video_note=videos[current_index])
     else:
         if current_index <= len(texts):
-            try:
-                pic = pictures[current_index]
-                await split_and_send_message(message, texts[current_index], pic=pic, reply_markup=get_keyboard_by_list(keyboards[current_index]))
-            except:
-                await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            if not is_video_mode:
+                try:
+                    pic = pictures[current_index]
+                    await split_and_send_message(message, texts[current_index], pic=pic,
+                                                 reply_markup=get_keyboard_by_list(keyboards[current_index]))
+                except:
+                    await split_and_send_message(message, texts[current_index],
+                                                 reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            else:
+                await message.answer_video_note(video_note=videos[current_index],
+                                                reply_markup=get_keyboard_by_list(keyboards[current_index]))
 
 
 @menu_router.message(FollowHandlers.first_handler)
 async def handle_message(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
+    video_mod = user_data.get('video_mode')
     if not user_data.get('first_message'):
-        await state.set_data({'first_message': message.text})
+        await state.set_data(
+            {
+                'first_message': message.text,
+                'video_mode': video_mod
+             }
+        )
     user_data = await state.get_data()
     current_index = user_data.get('current_index', 0)  # Получаем текущий индекс, начинаем с 0
     first_message = user_data.get('first_message')
     if first_message == 'Трудоустройство 🚀':
         await work(message, state)
     col_id = get_column_by_menu_second_row(search_text=first_message)
-    texts, keyboards, actions, pictures = get_text(col_id=col_id)  # Получаем данные
-    print(pictures)
+    is_video_mode = user_data.get('video_mode')
+    print(is_video_mode)
+    texts, keyboards, actions, pictures, videos = get_text(col_id=col_id)
     # Нормализуем текст сообщения, удаляем пробелы и приводим к нижнему регистру
     normalized_message_text = message.text.strip().lower()
 
@@ -157,18 +187,24 @@ async def handle_message(message: types.Message, state: FSMContext):
 
         # Отправляем следующий текст
         if current_index <= len(texts):
-            try:
-                pic = pictures[current_index]
-                await split_and_send_message(message, texts[current_index], pic=pic, reply_markup=get_keyboard_by_list(keyboards[current_index]))
-            except:
-                await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            if not is_video_mode:
+                try:
+                    pic = pictures[current_index]
+                    await split_and_send_message(message, texts[current_index], pic=pic, reply_markup=get_keyboard_by_list(keyboards[current_index]))
+                except:
+                    await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            else:
+                await message.answer_video_note(video_note=videos[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
     else:
         if current_index <= len(texts):
-            try:
-                pic = pictures[current_index]
-                await split_and_send_message(message, texts[current_index], pic=pic, reply_markup=get_keyboard_by_list(keyboards[current_index]))
-            except:
-                await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            if not is_video_mode:
+                try:
+                    pic = pictures[current_index]
+                    await split_and_send_message(message, texts[current_index], pic=pic, reply_markup=get_keyboard_by_list(keyboards[current_index]))
+                except:
+                    await split_and_send_message(message, texts[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
+            else:
+                await message.answer_video_note(video_note=videos[current_index], reply_markup=get_keyboard_by_list(keyboards[current_index]))
 
 
 async def split_and_send_message(message, text, pic=None, reply_markup=None):
